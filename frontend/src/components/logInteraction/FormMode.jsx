@@ -6,6 +6,12 @@
  * work: when ChatMode dispatches `setDraftFromExtraction` after the
  * Log Interaction tool extracts entities from a chat message, this
  * form immediately reflects those values without any extra wiring.
+ *
+ * DUPLICATE-SAVE FIX: if `activeInteractionId` is set, it means Chat
+ * Mode already saved this interaction to the DB. In that case,
+ * submitting the form calls UPDATE (PUT /interaction/{id}) instead of
+ * CREATE (POST /interaction) — so editing AI-extracted fields here
+ * before saving never creates a second, duplicate record.
  */
 
 import React, { useEffect, useState } from "react";
@@ -16,6 +22,7 @@ import Button from "../common/Button";
 import {
   updateDraftField,
   createInteraction,
+  updateInteraction,
   resetDraft,
 } from "../../store/interactionSlice";
 import { fetchHcps } from "../../store/hcpSlice";
@@ -35,9 +42,10 @@ const SENTIMENT_OPTIONS = [
 
 function FormMode() {
   const dispatch = useDispatch();
-  const { draft, status, lastSavedId, error } = useSelector((state) => state.interactions);
+  const { draft, activeInteractionId, status, error } = useSelector((state) => state.interactions);
   const [productsText, setProductsText] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
 
   useEffect(() => {
     dispatch(fetchHcps());
@@ -65,20 +73,47 @@ function FormMode() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitted(true);
+    setSuccessMsg("");
 
     if (!draft.doctor_name.trim() || !draft.raw_notes.trim()) {
       return; // basic client-side validation
     }
 
-    const payload = {
-      ...draft,
-      rep_id: 1, // single-tenant default rep, per architecture scope
-      source: "form",
-      follow_up_date: draft.follow_up_date || null,
-      sentiment: draft.sentiment || null,
-    };
+    if (activeInteractionId) {
+      // Already saved via AI Chat — UPDATE the same record, don't duplicate.
+      const changes = {
+        doctor_name: draft.doctor_name,
+        hospital: draft.hospital || null,
+        interaction_type: draft.interaction_type,
+        products_discussed: draft.products_discussed,
+        summary: draft.raw_notes, // form's "Notes" maps to the record's summary/raw_notes
+        raw_notes: draft.raw_notes,
+        follow_up_date: draft.follow_up_date || null,
+        follow_up_action: draft.follow_up_action || null,
+        sentiment: draft.sentiment || null,
+      };
+      const result = await dispatch(updateInteraction({ id: activeInteractionId, changes }));
+      if (updateInteraction.fulfilled.match(result)) {
+        setSuccessMsg(`✓ Interaction #${activeInteractionId} updated successfully.`);
+        dispatch(resetDraft());
+        setProductsText("");
+      }
+    } else {
+      // Fresh entry — CREATE a new record.
+      const payload = {
+        ...draft,
+        rep_id: 1, // single-tenant default rep, per architecture scope
+        source: "form",
+        follow_up_date: draft.follow_up_date || null,
+        sentiment: draft.sentiment || null,
+      };
+      const result = await dispatch(createInteraction(payload));
+      if (createInteraction.fulfilled.match(result)) {
+        setSuccessMsg(`✓ Interaction #${result.payload.id} saved successfully.`);
+        setProductsText("");
+      }
+    }
 
-    await dispatch(createInteraction(payload));
     setSubmitted(false);
   };
 
@@ -86,15 +121,19 @@ function FormMode() {
     dispatch(resetDraft());
     setProductsText("");
     setSubmitted(false);
+    setSuccessMsg("");
   };
 
   return (
     <form className="form-mode" onSubmit={handleSubmit}>
-      {lastSavedId && (
-        <div className="form-mode__success">
-          ✓ Interaction #{lastSavedId} saved successfully.
+      {activeInteractionId && (
+        <div className="form-mode__notice">
+          ℹ️ This interaction was already logged via AI Chat (#{activeInteractionId}). Saving here
+          will <strong>update</strong> that record, not create a new one.
         </div>
       )}
+
+      {successMsg && <div className="form-mode__success">{successMsg}</div>}
       {error && <div className="form-mode__error">{error}</div>}
 
       <div className="form-mode__grid">
@@ -180,7 +219,11 @@ function FormMode() {
           Clear
         </Button>
         <Button variant="primary" type="submit" disabled={status === "loading"}>
-          {status === "loading" ? "Saving..." : "Save Interaction"}
+          {status === "loading"
+            ? "Saving..."
+            : activeInteractionId
+            ? "Update Interaction"
+            : "Save Interaction"}
         </Button>
       </div>
 
@@ -202,6 +245,15 @@ function FormMode() {
           justify-content: flex-end;
           gap: var(--space-sm);
           padding-top: var(--space-sm);
+        }
+
+        .form-mode__notice {
+          background: var(--color-primary-light);
+          color: var(--color-primary);
+          padding: var(--space-sm) var(--space-md);
+          border-radius: var(--radius-sm);
+          font-size: 13px;
+          line-height: 1.5;
         }
 
         .form-mode__success {

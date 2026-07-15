@@ -8,6 +8,10 @@
  *   Chat Mode so that when the AI extracts entities from a chat
  *   message, switching to the Form tab shows those values pre-filled
  *   and editable.
+ * - `activeInteractionId`: set when the current draft corresponds to
+ *   an interaction the AI (Chat Mode) has ALREADY saved to the DB.
+ *   FormMode uses this to decide whether submitting should UPDATE
+ *   that existing record instead of CREATING a duplicate one.
  *
  * Async thunks call the backend via axiosClient and are the only
  * place API calls for interactions happen — components never call
@@ -86,6 +90,7 @@ const interactionSlice = createSlice({
     list: [],
     selected: null,
     draft: { ...emptyDraft },
+    activeInteractionId: null, // set when draft already exists as a saved record (from AI chat)
     status: "idle", // idle | loading | succeeded | failed
     error: null,
     lastSavedId: null,
@@ -98,10 +103,18 @@ const interactionSlice = createSlice({
     setDraftFromExtraction: (state, action) => {
       // Merges AI-extracted entities (from chat) into the draft without
       // wiping fields the user may have already typed manually.
-      state.draft = { ...state.draft, ...action.payload };
+      // If the payload includes an `id`, that means the AI has already
+      // SAVED this interaction — we track it so Form Mode updates
+      // that record on submit instead of creating a duplicate.
+      const { id, ...fields } = action.payload;
+      state.draft = { ...state.draft, ...fields };
+      if (id) {
+        state.activeInteractionId = id;
+      }
     },
     resetDraft: (state) => {
       state.draft = { ...emptyDraft };
+      state.activeInteractionId = null;
       state.lastSavedId = null;
     },
     clearSelected: (state) => {
@@ -134,6 +147,7 @@ const interactionSlice = createSlice({
         state.list.unshift(action.payload);
         state.lastSavedId = action.payload.id;
         state.draft = { ...emptyDraft };
+        state.activeInteractionId = null;
       })
       .addCase(createInteraction.rejected, (state, action) => {
         state.status = "failed";

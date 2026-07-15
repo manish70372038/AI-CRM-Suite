@@ -9,8 +9,10 @@
  *
  * When the Log Interaction tool returns extracted entities, they are
  * merged into the shared interaction draft via
- * `setDraftFromExtraction`, so switching to Form Mode shows them
- * pre-filled and editable.
+ * `setDraftFromExtraction` — INCLUDING the saved record's `id`. This
+ * is what lets Form Mode know the record already exists in the DB,
+ * so submitting the form later UPDATES it instead of creating a
+ * duplicate interaction.
  */
 
 import React, { useEffect, useRef, useState } from "react";
@@ -56,11 +58,34 @@ function ChatMode() {
   }, [messages]);
 
   useEffect(() => {
+    // Log Interaction tool ALREADY saved this to the DB — pass its id
+    // along so Form Mode updates the same record instead of creating
+    // a second, duplicate interaction when the rep hits Save there.
     if (lastToolResult?.toolName === "log_interaction" && lastToolResult.data) {
-      const { doctor_name, hospital, products_discussed, follow_up_date, summary, sentiment } =
+      const { id, doctor_name, hospital, products_discussed, follow_up_date, summary, sentiment } =
         lastToolResult.data;
       dispatch(
         setDraftFromExtraction({
+          id,
+          doctor_name: doctor_name || "",
+          hospital: hospital || "",
+          products_discussed: products_discussed || [],
+          follow_up_date: follow_up_date || "",
+          raw_notes: summary || "",
+          sentiment: sentiment || "",
+        })
+      );
+    }
+
+    // Edit Interaction tool also returns the (same) record's id —
+    // keep the draft's activeInteractionId pointed at it too, so any
+    // further form edits also update rather than duplicate.
+    if (lastToolResult?.toolName === "edit_interaction" && lastToolResult.data?.id) {
+      const { id, doctor_name, hospital, products_discussed, follow_up_date, summary, sentiment } =
+        lastToolResult.data;
+      dispatch(
+        setDraftFromExtraction({
+          id,
           doctor_name: doctor_name || "",
           hospital: hospital || "",
           products_discussed: products_discussed || [],
