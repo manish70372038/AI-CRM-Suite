@@ -160,8 +160,6 @@ The app runs at `http://localhost:3000` and expects the backend at `http://local
 Frontend and backend code for this project are both included in this single repository
 (see [Project Structure](#4-project-structure) above).
 
-**Repository link:** `<PASTE_YOUR_GITHUB_REPO_URL_HERE>`
-
 ### Video Walkthrough (10–15 minutes)
 The video covers:
 - A walkthrough of the frontend (Dashboard, Form Mode, Chat Mode side-by-side)
@@ -170,5 +168,3 @@ The video covers:
 - A simple explanation of the codebase and how the project is structured
   (frontend → Redux → Axios → FastAPI → LangGraph agent → PostgreSQL)
 - A brief summary of what was understood from the task requirements
-
-**Video link:** `<PASTE_YOUR_VIDEO_URL_HERE>`
