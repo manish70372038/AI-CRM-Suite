@@ -1,4 +1,4 @@
-]# AI-First CRM — HCP Module (Log Interaction Screen)
+# AI-First CRM — HCP Module (Log Interaction Screen)
 
 An AI-first CRM module for pharmaceutical field representatives to log interactions with
 Healthcare Professionals (HCPs) — either through a structured form or a conversational chat
@@ -151,3 +151,24 @@ The app runs at `http://localhost:3000` and expects the backend at `http://local
   scope. All interactions are attributed to a single seeded rep (`id=1`).
 - Alembic is set up for schema migrations, but `main.py` also runs `Base.metadata.create_all()`
   on startup so the project runs out-of-the-box without a manual migration step.
+
+---
+
+## 8. Submission
+
+### GitHub Repository
+Frontend and backend code for this project are both included in this single repository
+(see [Project Structure](#4-project-structure) above).
+
+**Repository link:** `<PASTE_YOUR_GITHUB_REPO_URL_HERE>`
+
+### Video Walkthrough (10–15 minutes)
+The video covers:
+- A walkthrough of the frontend (Dashboard, Form Mode, Chat Mode side-by-side)
+- A live demo of all 5 LangGraph tools: Log Interaction, Edit Interaction, Search Interaction,
+  Summarize Previous Interactions, and Recommend Follow-up Actions
+- A simple explanation of the codebase and how the project is structured
+  (frontend → Redux → Axios → FastAPI → LangGraph agent → PostgreSQL)
+- A brief summary of what was understood from the task requirements
+
+**Video link:** `<PASTE_YOUR_VIDEO_URL_HERE>`
